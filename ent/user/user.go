@@ -3,8 +3,10 @@
 package user
 
 import (
+	"time"
+
 	"entgo.io/ent/dialect/sql"
-	"github.com/google/uuid"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 )
 
 const (
@@ -12,16 +14,25 @@ const (
 	Label = "user"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldEmail holds the string denoting the email field in the database.
-	FieldEmail = "email"
+	// FieldCreatedAt holds the string denoting the created_at field in the database.
+	FieldCreatedAt = "created_at"
+	// EdgeEmails holds the string denoting the emails edge name in mutations.
+	EdgeEmails = "emails"
 	// Table holds the table name of the user in the database.
 	Table = "users"
+	// EmailsTable is the table that holds the emails relation/edge.
+	EmailsTable = "emails"
+	// EmailsInverseTable is the table name for the Email entity.
+	// It exists in this package in order to avoid circular dependency with the "email" package.
+	EmailsInverseTable = "emails"
+	// EmailsColumn is the table column denoting the emails relation/edge.
+	EmailsColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
 var Columns = []string{
 	FieldID,
-	FieldEmail,
+	FieldCreatedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -35,10 +46,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// EmailValidator is a validator for the "email" field. It is called by the builders before save.
-	EmailValidator func(string) error
-	// DefaultID holds the default value on creation for the "id" field.
-	DefaultID func() uuid.UUID
+	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
+	DefaultCreatedAt func() time.Time
 )
 
 // OrderOption defines the ordering options for the User queries.
@@ -49,7 +58,28 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
 }
 
-// ByEmail orders the results by the email field.
-func ByEmail(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldEmail, opts...).ToFunc()
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByEmailsCount orders the results by emails count.
+func ByEmailsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newEmailsStep(), opts...)
+	}
+}
+
+// ByEmails orders the results by emails terms.
+func ByEmails(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newEmailsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newEmailsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(EmailsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, EmailsTable, EmailsColumn),
+	)
 }

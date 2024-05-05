@@ -15,6 +15,9 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/pSnehanshu/govatar/ent/avatar"
+	"github.com/pSnehanshu/govatar/ent/email"
 	"github.com/pSnehanshu/govatar/ent/user"
 )
 
@@ -23,6 +26,10 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// Avatar is the client for interacting with the Avatar builders.
+	Avatar *AvatarClient
+	// Email is the client for interacting with the Email builders.
+	Email *EmailClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -36,6 +43,8 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.Avatar = NewAvatarClient(c.config)
+	c.Email = NewEmailClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -129,6 +138,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:    ctx,
 		config: cfg,
+		Avatar: NewAvatarClient(cfg),
+		Email:  NewEmailClient(cfg),
 		User:   NewUserClient(cfg),
 	}, nil
 }
@@ -149,6 +160,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:    ctx,
 		config: cfg,
+		Avatar: NewAvatarClient(cfg),
+		Email:  NewEmailClient(cfg),
 		User:   NewUserClient(cfg),
 	}, nil
 }
@@ -156,7 +169,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		User.
+//		Avatar.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -178,22 +191,344 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
+	c.Avatar.Use(hooks...)
+	c.Email.Use(hooks...)
 	c.User.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
+	c.Avatar.Intercept(interceptors...)
+	c.Email.Intercept(interceptors...)
 	c.User.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *AvatarMutation:
+		return c.Avatar.mutate(ctx, m)
+	case *EmailMutation:
+		return c.Email.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// AvatarClient is a client for the Avatar schema.
+type AvatarClient struct {
+	config
+}
+
+// NewAvatarClient returns a client for the Avatar from the given config.
+func NewAvatarClient(c config) *AvatarClient {
+	return &AvatarClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `avatar.Hooks(f(g(h())))`.
+func (c *AvatarClient) Use(hooks ...Hook) {
+	c.hooks.Avatar = append(c.hooks.Avatar, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `avatar.Intercept(f(g(h())))`.
+func (c *AvatarClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Avatar = append(c.inters.Avatar, interceptors...)
+}
+
+// Create returns a builder for creating a Avatar entity.
+func (c *AvatarClient) Create() *AvatarCreate {
+	mutation := newAvatarMutation(c.config, OpCreate)
+	return &AvatarCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Avatar entities.
+func (c *AvatarClient) CreateBulk(builders ...*AvatarCreate) *AvatarCreateBulk {
+	return &AvatarCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AvatarClient) MapCreateBulk(slice any, setFunc func(*AvatarCreate, int)) *AvatarCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AvatarCreateBulk{err: fmt.Errorf("calling to AvatarClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AvatarCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &AvatarCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Avatar.
+func (c *AvatarClient) Update() *AvatarUpdate {
+	mutation := newAvatarMutation(c.config, OpUpdate)
+	return &AvatarUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *AvatarClient) UpdateOne(a *Avatar) *AvatarUpdateOne {
+	mutation := newAvatarMutation(c.config, OpUpdateOne, withAvatar(a))
+	return &AvatarUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *AvatarClient) UpdateOneID(id uuid.UUID) *AvatarUpdateOne {
+	mutation := newAvatarMutation(c.config, OpUpdateOne, withAvatarID(id))
+	return &AvatarUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Avatar.
+func (c *AvatarClient) Delete() *AvatarDelete {
+	mutation := newAvatarMutation(c.config, OpDelete)
+	return &AvatarDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *AvatarClient) DeleteOne(a *Avatar) *AvatarDeleteOne {
+	return c.DeleteOneID(a.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *AvatarClient) DeleteOneID(id uuid.UUID) *AvatarDeleteOne {
+	builder := c.Delete().Where(avatar.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &AvatarDeleteOne{builder}
+}
+
+// Query returns a query builder for Avatar.
+func (c *AvatarClient) Query() *AvatarQuery {
+	return &AvatarQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeAvatar},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Avatar entity by its id.
+func (c *AvatarClient) Get(ctx context.Context, id uuid.UUID) (*Avatar, error) {
+	return c.Query().Where(avatar.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *AvatarClient) GetX(ctx context.Context, id uuid.UUID) *Avatar {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryEmail queries the email edge of a Avatar.
+func (c *AvatarClient) QueryEmail(a *Avatar) *EmailQuery {
+	query := (&EmailClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := a.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(avatar.Table, avatar.FieldID, id),
+			sqlgraph.To(email.Table, email.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, avatar.EmailTable, avatar.EmailColumn),
+		)
+		fromV = sqlgraph.Neighbors(a.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *AvatarClient) Hooks() []Hook {
+	return c.hooks.Avatar
+}
+
+// Interceptors returns the client interceptors.
+func (c *AvatarClient) Interceptors() []Interceptor {
+	return c.inters.Avatar
+}
+
+func (c *AvatarClient) mutate(ctx context.Context, m *AvatarMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AvatarCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AvatarUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AvatarUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AvatarDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Avatar mutation op: %q", m.Op())
+	}
+}
+
+// EmailClient is a client for the Email schema.
+type EmailClient struct {
+	config
+}
+
+// NewEmailClient returns a client for the Email from the given config.
+func NewEmailClient(c config) *EmailClient {
+	return &EmailClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `email.Hooks(f(g(h())))`.
+func (c *EmailClient) Use(hooks ...Hook) {
+	c.hooks.Email = append(c.hooks.Email, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `email.Intercept(f(g(h())))`.
+func (c *EmailClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Email = append(c.inters.Email, interceptors...)
+}
+
+// Create returns a builder for creating a Email entity.
+func (c *EmailClient) Create() *EmailCreate {
+	mutation := newEmailMutation(c.config, OpCreate)
+	return &EmailCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Email entities.
+func (c *EmailClient) CreateBulk(builders ...*EmailCreate) *EmailCreateBulk {
+	return &EmailCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EmailClient) MapCreateBulk(slice any, setFunc func(*EmailCreate, int)) *EmailCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EmailCreateBulk{err: fmt.Errorf("calling to EmailClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EmailCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &EmailCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Email.
+func (c *EmailClient) Update() *EmailUpdate {
+	mutation := newEmailMutation(c.config, OpUpdate)
+	return &EmailUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *EmailClient) UpdateOne(e *Email) *EmailUpdateOne {
+	mutation := newEmailMutation(c.config, OpUpdateOne, withEmail(e))
+	return &EmailUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *EmailClient) UpdateOneID(id uuid.UUID) *EmailUpdateOne {
+	mutation := newEmailMutation(c.config, OpUpdateOne, withEmailID(id))
+	return &EmailUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Email.
+func (c *EmailClient) Delete() *EmailDelete {
+	mutation := newEmailMutation(c.config, OpDelete)
+	return &EmailDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *EmailClient) DeleteOne(e *Email) *EmailDeleteOne {
+	return c.DeleteOneID(e.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *EmailClient) DeleteOneID(id uuid.UUID) *EmailDeleteOne {
+	builder := c.Delete().Where(email.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &EmailDeleteOne{builder}
+}
+
+// Query returns a query builder for Email.
+func (c *EmailClient) Query() *EmailQuery {
+	return &EmailQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeEmail},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Email entity by its id.
+func (c *EmailClient) Get(ctx context.Context, id uuid.UUID) (*Email, error) {
+	return c.Query().Where(email.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *EmailClient) GetX(ctx context.Context, id uuid.UUID) *Email {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryAvatar queries the avatar edge of a Email.
+func (c *EmailClient) QueryAvatar(e *Email) *AvatarQuery {
+	query := (&AvatarClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(email.Table, email.FieldID, id),
+			sqlgraph.To(avatar.Table, avatar.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, email.AvatarTable, email.AvatarColumn),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUser queries the user edge of a Email.
+func (c *EmailClient) QueryUser(e *Email) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(email.Table, email.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, email.UserTable, email.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *EmailClient) Hooks() []Hook {
+	return c.hooks.Email
+}
+
+// Interceptors returns the client interceptors.
+func (c *EmailClient) Interceptors() []Interceptor {
+	return c.inters.Email
+}
+
+func (c *EmailClient) mutate(ctx context.Context, m *EmailMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EmailCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EmailUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EmailUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EmailDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Email mutation op: %q", m.Op())
 	}
 }
 
@@ -258,7 +593,7 @@ func (c *UserClient) UpdateOne(u *User) *UserUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *UserClient) UpdateOneID(id uuid.UUID) *UserUpdateOne {
+func (c *UserClient) UpdateOneID(id string) *UserUpdateOne {
 	mutation := newUserMutation(c.config, OpUpdateOne, withUserID(id))
 	return &UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -275,7 +610,7 @@ func (c *UserClient) DeleteOne(u *User) *UserDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *UserClient) DeleteOneID(id uuid.UUID) *UserDeleteOne {
+func (c *UserClient) DeleteOneID(id string) *UserDeleteOne {
 	builder := c.Delete().Where(user.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -292,17 +627,33 @@ func (c *UserClient) Query() *UserQuery {
 }
 
 // Get returns a User entity by its id.
-func (c *UserClient) Get(ctx context.Context, id uuid.UUID) (*User, error) {
+func (c *UserClient) Get(ctx context.Context, id string) (*User, error) {
 	return c.Query().Where(user.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *UserClient) GetX(ctx context.Context, id uuid.UUID) *User {
+func (c *UserClient) GetX(ctx context.Context, id string) *User {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
 	}
 	return obj
+}
+
+// QueryEmails queries the emails edge of a User.
+func (c *UserClient) QueryEmails(u *User) *EmailQuery {
+	query := (&EmailClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(email.Table, email.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.EmailsTable, user.EmailsColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // Hooks returns the client hooks.
@@ -333,9 +684,9 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		User []ent.Hook
+		Avatar, Email, User []ent.Hook
 	}
 	inters struct {
-		User []ent.Interceptor
+		Avatar, Email, User []ent.Interceptor
 	}
 )

@@ -3,7 +3,11 @@
 package ent
 
 import (
+	"time"
+
 	"github.com/google/uuid"
+	"github.com/pSnehanshu/govatar/ent/avatar"
+	"github.com/pSnehanshu/govatar/ent/email"
 	"github.com/pSnehanshu/govatar/ent/schema"
 	"github.com/pSnehanshu/govatar/ent/user"
 )
@@ -12,14 +16,38 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	avatarFields := schema.Avatar{}.Fields()
+	_ = avatarFields
+	// avatarDescCreatedAt is the schema descriptor for created_at field.
+	avatarDescCreatedAt := avatarFields[1].Descriptor()
+	// avatar.DefaultCreatedAt holds the default value on creation for the created_at field.
+	avatar.DefaultCreatedAt = avatarDescCreatedAt.Default.(func() time.Time)
+	// avatarDescID is the schema descriptor for id field.
+	avatarDescID := avatarFields[0].Descriptor()
+	// avatar.DefaultID holds the default value on creation for the id field.
+	avatar.DefaultID = avatarDescID.Default.(func() uuid.UUID)
+	emailFields := schema.Email{}.Fields()
+	_ = emailFields
+	// emailDescEmail is the schema descriptor for email field.
+	emailDescEmail := emailFields[1].Descriptor()
+	// email.EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	email.EmailValidator = emailDescEmail.Validators[0].(func(string) error)
+	// emailDescIsVerified is the schema descriptor for is_verified field.
+	emailDescIsVerified := emailFields[2].Descriptor()
+	// email.DefaultIsVerified holds the default value on creation for the is_verified field.
+	email.DefaultIsVerified = emailDescIsVerified.Default.(bool)
+	// emailDescCreatedAt is the schema descriptor for created_at field.
+	emailDescCreatedAt := emailFields[4].Descriptor()
+	// email.DefaultCreatedAt holds the default value on creation for the created_at field.
+	email.DefaultCreatedAt = emailDescCreatedAt.Default.(func() time.Time)
+	// emailDescID is the schema descriptor for id field.
+	emailDescID := emailFields[0].Descriptor()
+	// email.DefaultID holds the default value on creation for the id field.
+	email.DefaultID = emailDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
-	// userDescEmail is the schema descriptor for email field.
-	userDescEmail := userFields[1].Descriptor()
-	// user.EmailValidator is a validator for the "email" field. It is called by the builders before save.
-	user.EmailValidator = userDescEmail.Validators[0].(func(string) error)
-	// userDescID is the schema descriptor for id field.
-	userDescID := userFields[0].Descriptor()
-	// user.DefaultID holds the default value on creation for the id field.
-	user.DefaultID = userDescID.Default.(func() uuid.UUID)
+	// userDescCreatedAt is the schema descriptor for created_at field.
+	userDescCreatedAt := userFields[1].Descriptor()
+	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
+	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
 }

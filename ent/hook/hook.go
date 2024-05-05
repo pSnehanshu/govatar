@@ -9,6 +9,30 @@ import (
 	"github.com/pSnehanshu/govatar/ent"
 )
 
+// The AvatarFunc type is an adapter to allow the use of ordinary
+// function as Avatar mutator.
+type AvatarFunc func(context.Context, *ent.AvatarMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AvatarFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AvatarMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AvatarMutation", m)
+}
+
+// The EmailFunc type is an adapter to allow the use of ordinary
+// function as Email mutator.
+type EmailFunc func(context.Context, *ent.EmailMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f EmailFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.EmailMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.EmailMutation", m)
+}
+
 // The UserFunc type is an adapter to allow the use of ordinary
 // function as User mutator.
 type UserFunc func(context.Context, *ent.UserMutation) (ent.Value, error)

@@ -8,10 +8,55 @@ import (
 )
 
 var (
+	// AvatarsColumns holds the columns for the "avatars" table.
+	AvatarsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "loc", Type: field.TypeString},
+		{Name: "rating", Type: field.TypeEnum, Enums: []string{"G", "PG", "R", "X"}, Default: "G"},
+		{Name: "email_id", Type: field.TypeUUID, Unique: true},
+	}
+	// AvatarsTable holds the schema information for the "avatars" table.
+	AvatarsTable = &schema.Table{
+		Name:       "avatars",
+		Columns:    AvatarsColumns,
+		PrimaryKey: []*schema.Column{AvatarsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "avatars_emails_avatar",
+				Columns:    []*schema.Column{AvatarsColumns[4]},
+				RefColumns: []*schema.Column{EmailsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
+	// EmailsColumns holds the columns for the "emails" table.
+	EmailsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "email", Type: field.TypeString, Unique: true},
+		{Name: "is_verified", Type: field.TypeBool, Default: false},
+		{Name: "shasum", Type: field.TypeString, Unique: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeString},
+	}
+	// EmailsTable holds the schema information for the "emails" table.
+	EmailsTable = &schema.Table{
+		Name:       "emails",
+		Columns:    EmailsColumns,
+		PrimaryKey: []*schema.Column{EmailsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "emails_users_emails",
+				Columns:    []*schema.Column{EmailsColumns[5]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeUUID},
-		{Name: "email", Type: field.TypeString},
+		{Name: "id", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
@@ -21,9 +66,13 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AvatarsTable,
+		EmailsTable,
 		UsersTable,
 	}
 )
 
 func init() {
+	AvatarsTable.ForeignKeys[0].RefTable = EmailsTable
+	EmailsTable.ForeignKeys[0].RefTable = UsersTable
 }

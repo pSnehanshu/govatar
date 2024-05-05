@@ -1,11 +1,12 @@
 package schema
 
 import (
-	"regexp"
+	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
-	"github.com/google/uuid"
 )
 
 // User holds the schema definition for the User entity.
@@ -16,12 +17,17 @@ type User struct {
 // Fields of the User.
 func (User) Fields() []ent.Field {
 	return []ent.Field{
-		field.UUID("id", uuid.UUID{}).Default(uuid.New),
-		field.String("email").Match(regexp.MustCompile(`^[\w-\.+]+@([\w-]+\.)+\w+$`)),
+		field.String("id"),
+		field.Time("created_at").Default(time.Now),
 	}
 }
 
 // Edges of the User.
 func (User) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		edge.To("emails", Email.Type).
+			Annotations(
+				entsql.OnDelete(entsql.Cascade),
+			),
+	}
 }

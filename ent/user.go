@@ -5,10 +5,10 @@ package ent
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
-	"github.com/google/uuid"
 	"github.com/pSnehanshu/govatar/ent/user"
 )
 
@@ -16,10 +16,31 @@ import (
 type User struct {
 	config `json:"-"`
 	// ID of the ent.
-	ID uuid.UUID `json:"id,omitempty"`
-	// Email holds the value of the "email" field.
-	Email        string `json:"email,omitempty"`
+	ID string `json:"id,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the UserQuery when eager-loading is set.
+	Edges        UserEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// UserEdges holds the relations/edges for other nodes in the graph.
+type UserEdges struct {
+	// Emails holds the value of the emails edge.
+	Emails []*Email `json:"emails,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// EmailsOrErr returns the Emails value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) EmailsOrErr() ([]*Email, error) {
+	if e.loadedTypes[0] {
+		return e.Emails, nil
+	}
+	return nil, &NotLoadedError{edge: "emails"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -27,10 +48,10 @@ func (*User) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case user.FieldEmail:
-			values[i] = new(sql.NullString)
 		case user.FieldID:
-			values[i] = new(uuid.UUID)
+			values[i] = new(sql.NullString)
+		case user.FieldCreatedAt:
+			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -47,16 +68,16 @@ func (u *User) assignValues(columns []string, values []any) error {
 	for i := range columns {
 		switch columns[i] {
 		case user.FieldID:
-			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field id", values[i])
-			} else if value != nil {
-				u.ID = *value
-			}
-		case user.FieldEmail:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field email", values[i])
+				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value.Valid {
-				u.Email = value.String
+				u.ID = value.String
+			}
+		case user.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				u.CreatedAt = value.Time
 			}
 		default:
 			u.selectValues.Set(columns[i], values[i])
@@ -69,6 +90,11 @@ func (u *User) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (u *User) Value(name string) (ent.Value, error) {
 	return u.selectValues.Get(name)
+}
+
+// QueryEmails queries the "emails" edge of the User entity.
+func (u *User) QueryEmails() *EmailQuery {
+	return NewUserClient(u.config).QueryEmails(u)
 }
 
 // Update returns a builder for updating this User.
@@ -94,8 +120,8 @@ func (u *User) String() string {
 	var builder strings.Builder
 	builder.WriteString("User(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", u.ID))
-	builder.WriteString("email=")
-	builder.WriteString(u.Email)
+	builder.WriteString("created_at=")
+	builder.WriteString(u.CreatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }
