@@ -2,46 +2,34 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net/http"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-	"github.com/pSnehanshu/govatar/ent"
 )
 
 func main() {
+	db := getDBClient()
+	defer db.Close()
 
-	// Initialize HTTP router
-	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-
-	r.Use(attachDBCtx)
+	app := fiber.New()
 
 	// Define the logs
-	r.Get("/user/{id}", func(w http.ResponseWriter, r *http.Request) {
-		id, err := uuid.Parse(chi.URLParam(r, "id"))
+	app.Get("/user/:id", func(c *fiber.Ctx) error {
+		id, err := uuid.Parse(c.Params("id"))
 		if err != nil {
-			w.Write([]byte("Invalid UUID"))
-			return
+			return c.SendString("Invalid UUID")
 		}
 
-		ctx := r.Context()
-		db := ctx.Value(dbClientKey).(*ent.Client)
-
-		user, err := db.User.Get(ctx, id)
+		user, err := db.User.Get(c.Context(), id)
 
 		if err != nil {
-			w.Write([]byte(fmt.Sprintf("User error: %v", err)))
-			return
+			return c.SendString(fmt.Sprintf("User error: %v", err))
 		}
 
-		w.Write([]byte(fmt.Sprintf("Hello %s", user.Email)))
+		return c.SendString(fmt.Sprintf("Hello %s", user.Email))
 	})
 
 	// Start server
-	log.Println("Server listening")
-	http.ListenAndServe(":3000", r)
+	app.Listen(":3000")
 }

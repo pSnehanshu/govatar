@@ -1,9 +1,7 @@
 package main
 
 import (
-	"context"
 	"log"
-	"net/http"
 
 	"github.com/pSnehanshu/govatar/ent"
 )
@@ -16,19 +14,4 @@ func getDBClient() *ent.Client {
 	}
 
 	return db
-}
-
-type key uint8
-
-const (
-	dbClientKey key = 5
-)
-
-func attachDBCtx(next http.Handler) http.Handler {
-	db := getDBClient()
-
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), dbClientKey, db)
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
 }
