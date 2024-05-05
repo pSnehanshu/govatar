@@ -1,19 +1,14 @@
-package main
+package app
 
 import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	_ "github.com/lib/pq"
+	"github.com/pSnehanshu/govatar/ent"
 )
 
-func main() {
-	db := getDBClient()
-	defer db.Close()
-
-	app := fiber.New()
-
+func mountRoutes(app *fiber.App, db *ent.Client) {
 	// Define the logs
 	app.Get("/user/:id", func(c *fiber.Ctx) error {
 		id, err := uuid.Parse(c.Params("id"))
@@ -29,7 +24,4 @@ func main() {
 
 		return c.SendString(fmt.Sprintf("Hello %s", user.Email))
 	})
-
-	// Start server
-	app.Listen(":3000")
 }
