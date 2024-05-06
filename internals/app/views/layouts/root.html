@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 
 <head>
     <meta charset="UTF-8">
@@ -10,9 +10,35 @@
 </head>
 
 <body>
-    <main>
+    <header class="block">
+        <nav class="navbar" role="navigation" aria-label="main navigation">
+            <div class="navbar-brand">
+                <a href="/" class="navbar-item">
+                    <h1>Govatar</h1>
+                </a>
+            </div>
+            <div class="navbar-menu">
+                <div class="navbar-end">
+                    <div class="navbar-item">
+                        <div class="buttons">
+                            <a href="/signup" class="button is-primary">
+                                <strong>Sign up</strong>
+                            </a>
+                            <a href="/login" class="button is-light">
+                                Log in
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="block">
         {{embed}}
     </main>
+
+    <footer class="block"></footer>
 </body>
 
 </html>
