@@ -12,6 +12,10 @@ func mountRoutes(app *fiber.App, db *ent.Client) {
 	// 	//
 	// })
 
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.Render("views/index", fiber.Map{})
+	})
+
 	app.Get("/user/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
 
