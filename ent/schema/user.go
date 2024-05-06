@@ -19,6 +19,8 @@ func (User) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id"),
 		field.Time("created_at").Default(time.Now),
+		field.String("name").Optional(),
+		field.String("password").Optional(),
 	}
 }
 
