@@ -2,9 +2,14 @@ package app
 
 import (
 	"log"
+	"os"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/pSnehanshu/govatar/ent"
+	"github.com/pSnehanshu/govatar/ent/email"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type PostLoginBody struct {
@@ -33,7 +38,70 @@ func mountRoutes(app *fiber.App, db *ent.Client) {
 			return sendError(fiber.StatusBadRequest, c, &errs)
 		}
 
-		log.Printf("Body: %s %s", body.Email, body.Password)
+		// Find email
+		email, err := db.Email.Query().Where(email.Email(body.Email)).Only(c.Context())
+		if err != nil {
+			log.Println("email not found")
+			return sendError(fiber.StatusUnauthorized, c, &[]FieldError{{
+				Error:   true,
+				Message: "Failed to login",
+			}})
+		}
+
+		if !email.IsVerified {
+			return sendError(fiber.StatusUnauthorized, c, &[]FieldError{{
+				Error:       true,
+				Message:     "Email not verified",
+				FailedField: "email",
+				Value:       body.Email,
+			}})
+		}
+
+		// Find associated user
+		user, err := db.Email.QueryUser(email).Only(c.Context())
+		if err != nil {
+			log.Println("user not found for email", email.Email)
+			return sendError(fiber.StatusUnauthorized, c, &[]FieldError{{
+				Error:   true,
+				Message: "Failed to login",
+			}})
+		}
+
+		// Check password
+		err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(body.Password))
+		if err != nil {
+			log.Println("incorrect password")
+			return sendError(fiber.StatusUnauthorized, c, &[]FieldError{{
+				Error:   true,
+				Message: "Failed to login",
+			}})
+		}
+
+		// Generate JWT token for session
+		expires := time.Now().Add(3 * 24 * time.Hour)
+
+		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.RegisteredClaims{
+			Issuer:    "govatar",
+			ExpiresAt: jwt.NewNumericDate(expires),
+			Subject:   user.ID,
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		}).SignedString([]byte(os.Getenv("LOGIN_JWT_SECRET_KEY")))
+		if err != nil {
+			log.Println(err)
+			return sendError(fiber.StatusInternalServerError, c, &[]FieldError{{
+				Error:   true,
+				Message: "Something went wrong!",
+			}})
+		}
+
+		c.Cookie(&fiber.Cookie{
+			Name:     "access-token",
+			Value:    token,
+			Expires:  expires,
+			HTTPOnly: true,
+			SameSite: "Strict",
+		})
+
 		return c.SendStatus(fiber.StatusOK)
 	})
 }
