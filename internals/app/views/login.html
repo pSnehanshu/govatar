@@ -1,9 +1,32 @@
-<div class="container">
+<script>
+    function data() {
+        return {
+            handleLogin: async (event) => {
+                const formData = new FormData(event.target);
+
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    showError(await response.json());
+                    return;
+                }
+
+                const data = await response.json();
+                console.dir(data);
+            }
+        }
+    }
+</script>
+
+<div class="container" x-data="data">
     <div class="box">
         <h1 class="title">Login to Govatar</h1>
         <h2 class="subtitle">Start managing your (go)avatars</h2>
 
-        <form action="#" method="post">
+        <form action="#" method="post" @submit.prevent="handleLogin">
             <div class="field">
                 <label for="email" class="label">Email</label>
                 <div class="control">

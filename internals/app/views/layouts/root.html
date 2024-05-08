@@ -7,6 +7,29 @@
     <title>Govatar</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.10/dist/cdn.min.js"></script>
+    <script>
+        function showError(errors) {
+            let message = "Something went wrong!";
+            if (Array.isArray(errors)) {
+                message = errors.map(err => {
+                    if (typeof err === 'object' && err !== null && "Message" in err) {
+                        return err.Message;
+                    } else if (typeof err === "string") {
+                        return err;
+                    } else {
+                        return "";
+                    }
+                }).join("\n");
+            } else if (typeof errors === "string") {
+                message = errors;
+            } else if (typeof errors === "object" && errors !== null && "Errors" in errors) {
+                showError(errors.Errors);
+                return;
+            }
+
+            alert(message);
+        }
+    </script>
 </head>
 
 <body>
@@ -33,11 +56,7 @@
             </div>
         </nav>
     </header>
-
-    <main class="block">
-        {{embed}}
-    </main>
-
+    <main class="block">{{embed}}</main>
     <footer class="block"></footer>
 </body>
 
