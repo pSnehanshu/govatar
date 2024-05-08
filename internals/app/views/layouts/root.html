@@ -7,7 +7,12 @@
     <title>Govatar</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.10/dist/cdn.min.js"></script>
+    <script src="https://kit.fontawesome.com/8505df3b81.js" crossorigin="anonymous"></script>
+
+    <script type="application/json" id="userJson">{{.user}}</script>
     <script>
+        const user = JSON.parse(document.getElementById('userJson').innerText);
+
         function showError(errors) {
             let message = "Something went wrong!";
             if (Array.isArray(errors)) {
@@ -44,12 +49,21 @@
                 <div class="navbar-end">
                     <div class="navbar-item">
                         <div class="buttons">
+                            {{if .user}}
+                            <a href="/logout" class="button">
+                                <span class="icon">
+                                    <i class="fa-solid fa-right-from-bracket"></i>
+                                </span>
+                                <span>Logout</span>
+                            </a>
+                            {{else}}
                             <a href="/signup" class="button is-primary">
                                 <strong>Sign up</strong>
                             </a>
                             <a href="/login" class="button is-light">
                                 Log in
                             </a>
+                            {{end}}
                         </div>
                     </div>
                 </div>

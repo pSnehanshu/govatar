@@ -2,13 +2,12 @@ package app
 
 import (
 	"log"
-	"os"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/pSnehanshu/govatar/ent"
 	"github.com/pSnehanshu/govatar/ent/email"
+	"github.com/pSnehanshu/govatar/internals/app/middleware"
+	"github.com/pSnehanshu/govatar/internals/service/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -18,8 +17,13 @@ type PostLoginBody struct {
 }
 
 func mountRoutes(app *fiber.App, db *ent.Client) {
+	appMiddlewares := middleware.New(db)
+
+	app.Use(appMiddlewares.InjectUser)
 
 	app.Get("/", func(c *fiber.Ctx) error {
+		log.Printf("User: %v\n", c.Locals("user"))
+
 		return c.Render("views/index", fiber.Map{})
 	})
 
@@ -78,14 +82,8 @@ func mountRoutes(app *fiber.App, db *ent.Client) {
 		}
 
 		// Generate JWT token for session
-		expires := time.Now().Add(3 * 24 * time.Hour)
+		token, expires, err := auth.GenerateAccessToken(user)
 
-		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, &jwt.RegisteredClaims{
-			Issuer:    "govatar",
-			ExpiresAt: jwt.NewNumericDate(expires),
-			Subject:   user.ID,
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-		}).SignedString([]byte(os.Getenv("LOGIN_JWT_SECRET_KEY")))
 		if err != nil {
 			log.Println(err)
 			return sendError(fiber.StatusInternalServerError, c, &[]FieldError{{
@@ -103,5 +101,10 @@ func mountRoutes(app *fiber.App, db *ent.Client) {
 		})
 
 		return c.SendStatus(fiber.StatusOK)
+	})
+
+	app.Get("/logout", appMiddlewares.AuthGuard, func(c *fiber.Ctx) error {
+		c.ClearCookie("access-token")
+		return c.Redirect("/")
 	})
 }

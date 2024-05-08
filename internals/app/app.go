@@ -16,8 +16,9 @@ func NewApp(db *ent.Client) *fiber.App {
 	engine := html.NewFileSystem(http.FS(viewsfs), ".html")
 
 	app := fiber.New(fiber.Config{
-		Views:       engine,
-		ViewsLayout: "views/layouts/root",
+		Views:             engine,
+		ViewsLayout:       "views/layouts/root",
+		PassLocalsToViews: true,
 	})
 
 	mountRoutes(app, db)
