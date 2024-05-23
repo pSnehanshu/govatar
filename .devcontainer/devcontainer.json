@@ -16,7 +16,6 @@
   },
   "postCreateCommand": {
     "install_deps": "go mod tidy",
-    "create_env_file": "echo \"DATABASE_URL=postgresql://admin:password@pg:5432/default_db\" > .env",
-    "apply_migrations": "atlas migrate apply --dir \"file://ent/migrate/migrations\" --url \"postgresql://admin:password@pg:5432/default_db?search_path=public&sslmode=disable\""
+    "migrate": "(echo \"DATABASE_URL=postgresql://admin:password@pg:5432/default_db?search_path=public&sslmode=disable\" > .env) && make migration_apply",
   }
 }
