@@ -1,0 +1,22 @@
+{
+  "name": "GoVatar",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "main",
+  "workspaceFolder": "/workspace",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.Go",
+        "eamodio.gitlens",
+        "dbaeumer.vscode-eslint",
+        "formulahendry.auto-rename-tag",
+        "streetsidesoftware.code-spell-checker"
+      ]
+    }
+  },
+  "postCreateCommand": {
+    "install_deps": "go mod tidy",
+    "create_env_file": "echo \"DATABASE_URL=postgresql://admin:password@pg:5432/default_db\" > .env",
+    "apply_migrations": "atlas migrate apply --dir \"file://ent/migrate/migrations\" --url \"postgresql://admin:password@pg:5432/default_db?search_path=public&sslmode=disable\""
+  }
+}

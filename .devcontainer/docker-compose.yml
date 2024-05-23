@@ -1,0 +1,53 @@
+version: "3.9"
+
+services:
+  main:
+    build: .
+    command: sleep infinity
+    volumes:
+      - ..:/workspace:cached
+    ports:
+      - "8080:8080"
+
+  # redis:
+  #   image: redis
+  #   restart: always
+
+  # redis-commander:
+  #   image: ghcr.io/joeferner/redis-commander
+  #   restart: always
+  #   depends_on:
+  #     - redis
+  #   environment:
+  #     REDIS_HOSTS: local:redis:6379
+  #   ports:
+  #     - "1080:8081"
+
+  pg:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_USER: admin
+      POSTGRES_DB: default_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  adminer:
+    image: ghcr.io/jeliebig/adminer-autologin
+    restart: always
+    depends_on:
+      - pg
+    ports:
+      - "2080:8080"
+    environment:
+      ADMINER_PLUGINS: login-env-vars
+      ADMINER_DESIGN: price
+      ADMINER_DRIVER: pgsql
+      ADMINER_SERVER: pg
+      ADMINER_USERNAME: admin
+      ADMINER_PASSWORD: password
+      ADMINER_DB: default_db
+
+volumes:
+  pgdata:
